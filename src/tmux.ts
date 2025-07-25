@@ -271,3 +271,14 @@ function getEndMarkerText(): string {
     : `${endMarkerPrefix}$?`;
 }
 
+/**
+ * Send raw keys to a tmux pane without any safety markers
+ * WARNING: This bypasses all safety checks and can be dangerous
+ * Use only for trusted operations like controlling text editors
+ */
+export async function sendKeysRaw(paneId: string, keys: string): Promise<void> {
+  // Escape single quotes in the keys string
+  const escapedKeys = keys.replace(/'/g, "'\\''");
+  await executeTmux(`send-keys -t '${paneId}' '${escapedKeys}'`);
+}
+

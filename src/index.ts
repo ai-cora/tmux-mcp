@@ -306,6 +306,35 @@ server.tool(
   }
 );
 
+// Send raw keys - Tool
+server.tool(
+  "send-keys-raw",
+  "Send raw keys to a tmux pane without safety markers. WARNING: This bypasses all safety checks. Use only for trusted operations like controlling text editors.",
+  {
+    paneId: z.string().describe("ID of the tmux pane"),
+    keys: z.string().describe("Keys to send (e.g., 'Hello' or 'C-x C-s' for Ctrl+X Ctrl+S)")
+  },
+  async ({ paneId, keys }) => {
+    try {
+      await tmux.sendKeysRaw(paneId, keys);
+      return {
+        content: [{
+          type: "text",
+          text: `Raw keys sent to pane ${paneId}: ${keys}`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Error sending raw keys: ${error}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
 // Expose tmux session list as a resource
 server.resource(
   "Tmux Sessions",
