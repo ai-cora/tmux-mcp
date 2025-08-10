@@ -171,6 +171,37 @@ export async function createWindow(sessionId: string, name: string): Promise<Tmu
   return windows.find(window => window.name === name) || null;
 }
 
+/**
+ * Split a pane horizontally or vertically
+ */
+export async function splitPane(
+  paneId: string, 
+  direction: 'horizontal' | 'vertical',
+  percentage?: number
+): Promise<TmuxPane | null> {
+  const splitFlag = direction === 'horizontal' ? '-h' : '-v';
+  const percentageFlag = percentage ? `-p ${percentage}` : '';
+  
+  try {
+    // Execute split command and capture the new pane ID
+    const output = await executeTmux(
+      `split-window ${splitFlag} ${percentageFlag} -t '${paneId}' -P -F '#{pane_id}'`
+    );
+    
+    const newPaneId = output.trim();
+    
+    // Get the window ID from the original pane
+    const paneInfo = await executeTmux(`display-message -p -t '${paneId}' -F '#{window_id}'`);
+    const windowId = paneInfo.trim();
+    
+    // Get all panes in the window to find the new one
+    const panes = await listPanes(windowId);
+    return panes.find(pane => pane.id === newPaneId) || null;
+  } catch (error) {
+    throw new Error(`Failed to split pane: ${error}`);
+  }
+}
+
 // Map to track ongoing command executions
 const activeCommands = new Map<string, CommandExecution>();
 
