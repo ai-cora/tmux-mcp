@@ -225,6 +225,38 @@ server.tool(
   }
 );
 
+// Split pane - Tool
+server.tool(
+  "split-pane",
+  "Split a tmux pane horizontally or vertically",
+  {
+    paneId: z.string().describe("ID of the tmux pane to split"),
+    direction: z.enum(["horizontal", "vertical"]).describe("Split direction"),
+    percentage: z.number().optional().describe("Percentage of space for new pane (1-99)")
+  },
+  async ({ paneId, direction, percentage }) => {
+    try {
+      const newPane = await tmux.splitPane(paneId, direction, percentage);
+      return {
+        content: [{
+          type: "text",
+          text: newPane
+            ? `Pane split successfully: ${JSON.stringify(newPane, null, 2)}`
+            : `Failed to split pane`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Error splitting pane: ${error}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
 // Execute command in pane - Tool
 server.tool(
   "execute-command",
