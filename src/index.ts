@@ -338,6 +338,85 @@ server.tool(
   }
 );
 
+// Send raw keys - Tool
+server.tool(
+  "send-keys-raw",
+  "Send raw keys to a tmux pane without safety markers. WARNING: This bypasses all safety checks. Use only for sending keystrokes into existing applications or processes (like text editors). For tmux commands or general operations, use the Bash tool instead.",
+  {
+    paneId: z.string().describe("ID of the tmux pane"),
+    keys: z.string().describe("Keys to send (e.g., 'Hello' or 'C-x C-s' for Ctrl+X Ctrl+S)")
+  },
+  async ({ paneId, keys }) => {
+    try {
+      await tmux.sendKeysRaw(paneId, keys);
+      return {
+        content: [{
+          type: "text",
+          text: `Raw keys sent to pane ${paneId}: ${keys}`
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Error sending raw keys: ${error}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Get complete hierarchy - Tool
+server.tool(
+  "get-hierarchy",
+  "Get complete tmux hierarchy showing all sessions, windows, and panes with detailed information including active states, running processes, dimensions, and current paths",
+  {},
+  async () => {
+    try {
+      const hierarchy = await tmux.getCompleteHierarchy();
+      
+      // Format the hierarchy for better readability
+      let output = "TMUX HIERARCHY\n==============\n\n";
+      
+      for (const session of hierarchy) {
+        output += `SESSION: ${session.name} (${session.id})${session.attached ? ' [ATTACHED]' : ''}\n`;
+        output += `  Created: ${new Date(parseInt(session.created) * 1000).toLocaleString()}\n`;
+        output += `  Windows: ${session.windows.length}\n\n`;
+        
+        for (const window of session.windows) {
+          output += `  WINDOW: ${window.name} (${window.id})${window.active ? ' [ACTIVE]' : ''}\n`;
+          output += `    Layout: ${window.layout}\n`;
+          output += `    Panes: ${window.panes.length}\n\n`;
+          
+          for (const pane of window.panes) {
+            output += `    PANE: ${pane.id}${pane.active ? ' [ACTIVE]' : ''}\n`;
+            output += `      Title: ${pane.title}\n`;
+            output += `      Command: ${pane.command} (PID: ${pane.pid})\n`;
+            output += `      Size: ${pane.width}x${pane.height}\n`;
+            output += `      Path: ${pane.currentPath}\n\n`;
+          }
+        }
+      }
+      
+      return {
+        content: [{
+          type: "text",
+          text: output
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Error getting tmux hierarchy: ${error}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
 // Expose tmux session list as a resource
 server.resource(
   "Tmux Sessions",

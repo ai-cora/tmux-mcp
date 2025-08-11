@@ -302,3 +302,93 @@ function getEndMarkerText(): string {
     : `${endMarkerPrefix}$?`;
 }
 
+/**
+ * Send raw keys to a tmux pane without any safety markers
+ * WARNING: This bypasses all safety checks and can be dangerous
+ * Use only for trusted operations like controlling text editors
+ */
+export async function sendKeysRaw(paneId: string, keys: string): Promise<void> {
+  // Escape single quotes in the keys string
+  const escapedKeys = keys.replace(/'/g, "'\\''");
+  await executeTmux(`send-keys -t '${paneId}' '${escapedKeys}'`);
+}
+
+export interface TmuxPaneDetails extends TmuxPane {
+  command: string;
+  pid: number;
+  width: number;
+  height: number;
+  currentPath: string;
+}
+
+export interface TmuxWindowDetails extends TmuxWindow {
+  layout: string;
+  panes: TmuxPaneDetails[];
+}
+
+export interface TmuxSessionDetails extends Omit<TmuxSession, 'windows'> {
+  created: string;
+  windowCount: number;
+  windows: TmuxWindowDetails[];
+}
+
+/**
+ * Get complete tmux hierarchy with all sessions, windows, and panes
+ */
+export async function getCompleteHierarchy(): Promise<TmuxSessionDetails[]> {
+  const sessions = await listSessions();
+  const detailedSessions: TmuxSessionDetails[] = [];
+
+  for (const session of sessions) {
+    const windows = await listWindows(session.id);
+    const detailedWindows: TmuxWindowDetails[] = [];
+
+    for (const window of windows) {
+      const panes = await listPanes(window.id);
+      const detailedPanes: TmuxPaneDetails[] = [];
+
+      for (const pane of panes) {
+        // Get detailed pane information
+        const format = "#{pane_id}:#{pane_current_command}:#{pane_pid}:#{pane_width}:#{pane_height}:#{pane_current_path}:#{pane_title}:#{?pane_active,1,0}";
+        const paneInfo = await executeTmux(`list-panes -t '${pane.id}' -F '${format}'`);
+        const [id, command, pid, width, height, currentPath, title, active] = paneInfo.split(':');
+
+        detailedPanes.push({
+          id,
+          windowId: window.id,
+          title,
+          active: active === '1',
+          command,
+          pid: parseInt(pid, 10),
+          width: parseInt(width, 10),
+          height: parseInt(height, 10),
+          currentPath
+        });
+      }
+
+      // Get window layout
+      const layoutInfo = await executeTmux(`list-windows -t '${window.id}' -F '#{window_layout}'`);
+
+      detailedWindows.push({
+        ...window,
+        layout: layoutInfo.trim(),
+        panes: detailedPanes
+      });
+    }
+
+    // Get session creation time
+    const sessionInfo = await executeTmux(`list-sessions -F '#{session_created}' -f '#{==:#{session_id},${session.id}}'`);
+
+    detailedSessions.push({
+      id: session.id,
+      name: session.name,
+      attached: session.attached,
+      created: sessionInfo.trim(),
+      windowCount: session.windows,
+      windows: detailedWindows
+    });
+  }
+
+  return detailedSessions;
+}
+
