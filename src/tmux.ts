@@ -392,3 +392,130 @@ export async function getCompleteHierarchy(): Promise<TmuxSessionDetails[]> {
   return detailedSessions;
 }
 
+// State tracking for previous pane
+let previousPane: string | null = null;
+
+/**
+ * Select a tmux pane, window, or session
+ */
+export async function selectPane(args: {
+  target?: string;
+  session?: string;
+  window?: string;
+  pane?: string;
+}): Promise<{
+  success: boolean;
+  currentPane: string;
+  previousPane?: string;
+  session: string;
+  window: string;
+  error?: string;
+}> {
+  try {
+    // Get current pane before switching
+    const currentInfo = await executeTmux("display-message -p '#{pane_id}:#{session_name}:#{window_id}'");
+    const [currentPaneId] = currentInfo.split(':');
+    
+    let target: string | undefined;
+    
+    // Handle no arguments - return to previous pane
+    if (!args.target && !args.session && !args.window && !args.pane) {
+      if (!previousPane) {
+        throw new Error("No previous pane to return to");
+      }
+      target = previousPane;
+    } else if (args.target) {
+      // Use provided target directly
+      target = args.target;
+    } else {
+      // Construct target from components
+      const parts = [];
+      if (args.session) parts.push(args.session);
+      if (args.window) parts.push(args.window);
+      if (args.pane) parts.push(args.pane);
+      
+      if (parts.length === 0) {
+        throw new Error("No target specified");
+      }
+      
+      // Format the target based on what was provided
+      if (args.pane && args.pane.startsWith('%')) {
+        // If pane ID is provided, use it directly
+        target = args.pane;
+      } else if (args.session && args.window) {
+        // Session and window provided
+        target = `${args.session}:${args.window}`;
+        if (args.pane) {
+          target += `.${args.pane}`;
+        }
+      } else if (args.window) {
+        // Just window provided
+        target = args.window;
+      } else if (args.session) {
+        // Just session provided
+        target = args.session;
+      }
+    }
+    
+    // Perform the selection
+    if (target!.startsWith('%')) {
+      // Pane ID - use select-pane
+      await executeTmux(`select-pane -t '${target}'`);
+    } else if (target!.startsWith('@') || target!.includes(':')) {
+      // Window or session:window - use select-window
+      await executeTmux(`select-window -t '${target}'`);
+    } else if (target!.startsWith('$')) {
+      // Session - switch to session
+      await executeTmux(`switch-client -t '${target}'`);
+    } else {
+      // Try as window name first, then session name
+      try {
+        await executeTmux(`select-window -t '${target}'`);
+      } catch {
+        // If window selection fails, try as session
+        await executeTmux(`switch-client -t '${target}'`);
+      }
+    }
+    
+    // Get new pane information after switching
+    const newInfo = await executeTmux("display-message -p '#{pane_id}:#{session_name}:#{window_id}'");
+    const [newPaneId, sessionName, windowId] = newInfo.split(':');
+    
+    // Update previous pane if we actually switched
+    if (currentPaneId !== newPaneId) {
+      previousPane = currentPaneId;
+    }
+    
+    return {
+      success: true,
+      currentPane: newPaneId,
+      previousPane: previousPane || undefined,
+      session: sessionName,
+      window: windowId
+    };
+  } catch (error: any) {
+    // Get current state even on error
+    try {
+      const info = await executeTmux("display-message -p '#{pane_id}:#{session_name}:#{window_id}'");
+      const [paneId, sessionName, windowId] = info.split(':');
+      
+      return {
+        success: false,
+        currentPane: paneId,
+        previousPane: previousPane || undefined,
+        session: sessionName,
+        window: windowId,
+        error: error.message
+      };
+    } catch {
+      return {
+        success: false,
+        currentPane: '',
+        session: '',
+        window: '',
+        error: error.message
+      };
+    }
+  }
+}
+

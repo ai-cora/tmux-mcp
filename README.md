@@ -66,6 +66,8 @@ The MCP server needs to know the shell only when executing commands, to properly
 - `capture-pane` - Capture content from a tmux pane
 - `create-session` - Create a new tmux session
 - `create-window` - Create a new window in a tmux session
-- `execute-command` - Execute a command in a tmux pane
-- `get-command-result` - Get the result of an executed command
+- `split-pane` - Split a tmux pane horizontally or vertically
+- `send-keys-raw` - Send raw keystrokes to a tmux pane (for text editors and interactive apps)
+- `select-pane` - Select a tmux pane, window, or session (switch focus)
+- `get-hierarchy` - Get complete tmux hierarchy with all sessions, windows, and panes
 

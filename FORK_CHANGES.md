@@ -1,6 +1,6 @@
-# Tmux MCP Fork - Raw Send Keys
+# Tmux MCP Fork - Enhanced Terminal Control
 
-This is a fork of [nickgnd/tmux-mcp](https://github.com/nickgnd/tmux-mcp) with added raw send-keys capability.
+This is a fork of [nickgnd/tmux-mcp](https://github.com/nickgnd/tmux-mcp) with added capabilities for better terminal control and show-and-tell demonstrations.
 
 ## Changes Made
 
@@ -27,7 +27,35 @@ The original tmux-mcp wraps all commands with safety markers (`TMUX_MCP_START` a
 
 This fork maintains backward compatibility with all existing tools while adding the raw capability needed for voice-controlled code demonstrations.
 
+### Added `select-pane` Tool
+
+This fork adds a new tool `select-pane` that allows AI agents to programmatically switch focus between tmux panes, windows, and sessions. This is essential for show-and-tell demonstrations and terminal control workflows.
+
+**Features**:
+- Switch to any pane by ID (`%1`, `%2`)
+- Switch to any window by ID (`@1`, `@2`) 
+- Switch to any session by ID (`$0`, `$1`)
+- Support for composite targets (`$0:@2.%3`)
+- Previous pane tracking - call with no arguments to return to previous pane (like `cd -`)
+- Flexible argument formats for different use cases
+
+### Usage Examples
+
+```javascript
+// Switch to specific pane
+await selectPane({ target: "%2" });
+
+// Switch to window
+await selectPane({ target: "@2" });
+
+// Switch using components
+await selectPane({ session: "cora", window: "ffmpeg-demo" });
+
+// Return to previous pane
+await selectPane({});  // Like cd -
+```
+
 ## Version
 
 - Original: 0.1.3
-- Fork: 0.1.3-raw
+- Fork: 0.1.3-raw-select

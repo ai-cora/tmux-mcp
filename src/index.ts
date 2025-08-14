@@ -258,6 +258,9 @@ server.tool(
 );
 
 // Execute command in pane - Tool
+// DISABLED: This tool has command wrapping issues that cause "echo" to become "cho"
+// Use send-keys-raw or Bash tool instead
+/*
 server.tool(
   "execute-command",
   "Execute a command in a tmux pane and get results. IMPORTANT: Avoid heredoc syntax (cat << EOF) and other multi-line constructs as they conflict with command wrapping. For file writing, prefer: printf 'content\\n' > file, echo statements, or write to temp files instead.",
@@ -289,8 +292,11 @@ server.tool(
     }
   }
 );
+*/
 
 // Get command result - Tool
+// DISABLED: Part of execute-command functionality
+/*
 server.tool(
   "get-command-result",
   "Get the result of an executed command",
@@ -337,6 +343,7 @@ server.tool(
     }
   }
 );
+*/
 
 // Send raw keys - Tool
 server.tool(
@@ -360,6 +367,54 @@ server.tool(
         content: [{
           type: "text",
           text: `Error sending raw keys: ${error}`
+        }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Select pane - Tool
+server.tool(
+  "select-pane",
+  "Select a tmux pane, window, or session. Switch focus to any pane across sessions and windows. With no arguments, returns to the previously selected pane (like 'cd -').",
+  {
+    target: z.string().optional().describe("Pane ID (%1, %2), window (@1, @2), or session:window.pane ($0:@1.%2)"),
+    session: z.string().optional().describe("Session name/ID (alternative to target)"),
+    window: z.string().optional().describe("Window name/ID (alternative to target)"),
+    pane: z.string().optional().describe("Pane ID (alternative to target)")
+  },
+  async (args) => {
+    try {
+      const result = await tmux.selectPane(args);
+      
+      if (result.success) {
+        let message = `Selected pane ${result.currentPane}`;
+        if (result.previousPane && result.previousPane !== result.currentPane) {
+          message += ` (previous: ${result.previousPane})`;
+        }
+        message += `\nSession: ${result.session}, Window: ${result.window}`;
+        
+        return {
+          content: [{
+            type: "text",
+            text: message
+          }]
+        };
+      } else {
+        return {
+          content: [{
+            type: "text",
+            text: `Failed to select pane: ${result.error}`
+          }],
+          isError: true
+        };
+      }
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `Error selecting pane: ${error}`
         }],
         isError: true
       };
