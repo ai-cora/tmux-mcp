@@ -459,7 +459,21 @@ export async function selectPane(args: {
     
     // Perform the selection
     if (target!.startsWith('%')) {
-      // Pane ID - use select-pane
+      // Pane ID - for cross-window pane switching, we need to select the window first
+      // Get the window that contains this pane
+      try {
+        const paneList = await executeTmux(`list-panes -a -F '#{pane_id}:#{window_id}'`);
+        const lines = paneList.split('\n');
+        const paneLine = lines.find(line => line.startsWith(`${target}:`));
+        if (paneLine) {
+          const windowId = paneLine.split(':')[1];
+          if (windowId) {
+            await executeTmux(`select-window -t '${windowId}'`);
+          }
+        }
+      } catch (error) {
+        // Fallback to direct pane selection if pane info lookup fails
+      }
       await executeTmux(`select-pane -t '${target}'`);
     } else if (target!.startsWith('@') || target!.includes(':')) {
       // Window or session:window - use select-window
