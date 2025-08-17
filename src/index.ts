@@ -348,7 +348,7 @@ server.tool(
 // Send raw keys - Tool
 server.tool(
   "send-keys-raw",
-  "Send raw keys to a tmux pane without safety markers. WARNING: This bypasses all safety checks. Use only for sending keystrokes into existing applications or processes (like text editors). For tmux commands or general operations, use the Bash tool instead.",
+  "Send raw keys to a tmux pane without safety markers. WARNING: This bypasses all safety checks. Use only for sending keystrokes into existing applications or processes (like text editors). For tmux commands or general operations, use the Bash tool instead. CRITICAL: Always use capture-pane BEFORE sending keys to see current state, and capture-pane AFTER to verify results before responding to user.",
   {
     paneId: z.string().describe("ID of the tmux pane"),
     keys: z.string().describe("Keys to send (e.g., 'Hello' or 'C-x C-s' for Ctrl+X Ctrl+S)")
